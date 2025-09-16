@@ -1,8 +1,6 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateCursoDto } from './create-curso.dto';
+import { PartialType } from "@nestjs/mapped-types";
+import { CreateCursoDto } from "./create-curso.dto";
 
-export class UpdateCursoDto extends PartialType(CreateCursoDto) {
-    nome: string;
-    cargaHoraria: number;
-    datainicio: Date;
-}
+export class UpdateCursoDto extends PartialType(CreateCursoDto) {}
+
+

@@ -1,42 +1,43 @@
 import { Injectable } from '@nestjs/common';
-import { Model } from 'mongoose';
-import { InjectModel } from '@nestjs/mongoose';
-import { DisciplinaDocument, Disciplinas } from './schema/disciplina.schema';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Disciplina } from './entity/disciplina.entity';
 import { UpdateDisciplinaDto } from './dto/update-disciplina.dto';
 import { CreateDisciplinaDto } from './dto/create-disciplina.dto';
+import { Curso } from '../cursos/entities/curso.entity';
 
 
 @Injectable()
 export class DisciplinaService {
-  constructor(@InjectModel(Disciplinas.name) private readonly disciplinaModel: Model<DisciplinaDocument>) {}
+  constructor(@InjectRepository(Disciplina) private readonly disciplinaRepository: Repository<Disciplina>) {}
 
 
   async create(createDisciplinaDto: CreateDisciplinaDto) {
-    const created = await this.disciplinaModel.create(createDisciplinaDto);
-    return created.toObject();
-    
+    const created = this.disciplinaRepository.create({
+      nome: createDisciplinaDto.nome,
+      curso: { id: createDisciplinaDto.cursoId } as Curso,
+    });
+    const saved = await this.disciplinaRepository.save(created);
+    return saved;
   }
 
   async findAll() {
-    const docs = await this.disciplinaModel.find().lean().exec();
-    return docs;
+    return this.disciplinaRepository.find({ relations: ['curso'] });
   }
 
-  async findOne(id: string) {
-    const doc = await this.disciplinaModel.findById(id).lean().exec();
-    return doc ?? undefined;
+  async findOne(id: number) {
+    const found = await this.disciplinaRepository.findOne({ where: { id }, relations: ['curso'] });
+    return found ?? undefined;
   }
 
-  async update(id: string, updateDisciplinaDto: UpdateDisciplinaDto) {
-      const updated = await this.disciplinaModel
-        .findByIdAndUpdate(id, updateDisciplinaDto, { new: true, runValidators: true })
-        .lean()
-        .exec();
-      return updated ?? undefined;
-    }
+  async update(id: number, updateDisciplinaDto: UpdateDisciplinaDto) {
+    await this.disciplinaRepository.update({ id }, { nome: updateDisciplinaDto.nome });
+    const updated = await this.disciplinaRepository.findOne({ where: { id }, relations: ['curso'] });
+    return updated ?? undefined;
+  }
 
-  async remove(id: string) {
-    const result = await this.disciplinaModel.findByIdAndDelete(id).exec();
-    return !!result;
+  async remove(id: number) {
+    const result = await this.disciplinaRepository.delete({ id });
+    return (result.affected ?? 0) > 0;
   }
 }

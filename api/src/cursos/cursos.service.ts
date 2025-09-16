@@ -1,44 +1,47 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { CreateCursoDto } from './dto/create-curso.dto';
 import { UpdateCursoDto } from './dto/update-curso.dto';
 import { Curso } from './entities/curso.entity';
-import { CursoDocument } from './schema/curso.schema';
-import { Model } from 'mongoose';
-import { InjectModel } from '@nestjs/mongoose';
 
 
 @Injectable()
 export class CursosService {
-  constructor(@InjectModel(Curso.name) private readonly cursoModel: Model<CursoDocument>) {}
+  constructor(@InjectRepository(Curso) private readonly cursoRepository: Repository<Curso>) {}
 
 
-  async create(createUserDto: CreateCursoDto) {
-    const created = await this.cursoModel.create(createUserDto);
-    return created.toObject();
-    
+  async create(createCursoDto: CreateCursoDto) {
+    const created = this.cursoRepository.create({
+      nome: createCursoDto.nome,
+      cargaHoraria: createCursoDto.cargaHoraria,
+  dataInicio: createCursoDto.dataInicio as unknown as Date,
+    });
+    const saved = await this.cursoRepository.save(created);
+    return saved;
   }
 
   async findAll() {
-    const docs = await this.cursoModel.find().lean().exec();
-    return docs;
+    return this.cursoRepository.find({ relations: ['disciplinas'] });
   }
 
-  async findOne(id: string) {
-    const doc = await this.cursoModel.findById(id).lean().exec();
-    return doc ?? undefined;
+  async findOne(id: number) {
+    const found = await this.cursoRepository.findOne({ where: { id }, relations: ['disciplinas'] });
+    return found ?? undefined;
   }
 
-  async update(id: string, updateUserDto: UpdateCursoDto) {
-     const updated = await this.cursoModel
-        .findByIdAndUpdate(id, updateUserDto, { new: true, runValidators: true })
-        .lean()
-        .exec();
-      return updated ?? undefined;
-    
-    }
+  async update(id: number, updateCursoDto: UpdateCursoDto) {
+    await this.cursoRepository.update({ id }, {
+      nome: updateCursoDto.nome,
+      cargaHoraria: updateCursoDto.cargaHoraria,
+  dataInicio: updateCursoDto.dataInicio as unknown as Date,
+    });
+    const updated = await this.cursoRepository.findOne({ where: { id }, relations: ['disciplinas'] });
+    return updated ?? undefined;
+  }
   
-  async remove(id: string) {
-    const result = await this.cursoModel.findByIdAndDelete(id).exec();
-    return !!result;
+  async remove(id: number) {
+    const result = await this.cursoRepository.delete({ id });
+    return (result.affected ?? 0) > 0;
   }
 }
